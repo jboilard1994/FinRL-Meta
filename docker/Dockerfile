@@ -1,19 +1,27 @@
-FROM stablebaselines/rl-baselines3-zoo
+FROM python:3.8
 
-ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=DontWarn
+ENV VENV_DIR=/opt/venv/_dev
+ENV PATH=$VENV_DIR/bin:$PATH
+SHELL ["/bin/bash", "-c"]
 
-RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
-
-RUN apt-get update && apt-get install -q -y wget
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    wget \
+    build-essential \
+    gcc \
+    g++ \
+    swig \
+    curl \
+    python3-dev
 
 RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
-  tar -xvzf ta-lib-0.4.0-src.tar.gz && \
-  cd ta-lib/ && \
-  ./configure --prefix=/usr && \
-  make && \
-  make install
-
-WORKDIR /src
+    tar -xvzf ta-lib-0.4.0-src.tar.gz && \
+    cd ta-lib/ && \
+    ./configure --prefix=/usr && \
+    make && \
+    make install && \
+    ldconfig && \
+    cd .. && rm -rf ta-lib ta-lib-0.4.0-src.tar.gz
 
 COPY requirements.txt .
 
@@ -26,9 +34,5 @@ ENV TINI_VERSION v0.6.0
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
 RUN chmod +x /usr/bin/tini
 
-# copy the code instead of mounting
-COPY . .
-
-ENTRYPOINT ["/usr/bin/tini", "--"]
-
-CMD ["jupyter", "lab", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--NotebookApp.token=''","--NotebookApp.password=''","--allow-root"]
+COPY . /workspace
+WORKDIR /workspace
